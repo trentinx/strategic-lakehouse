@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobalTrade Solutions — Dashboard Lakehouse</title>
+    <style>
+        /* --- Reset & Base --- */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a; /* Contrast ratio > 14:1 sur #f5f5f5 */
+            line-height: 1.6;
+        }
+
+        a { color: #0056b3; } /* Contrast ratio > 4.5:1 sur #f5f5f5 */
+        a:focus, button:focus { outline: 3px solid #0056b3; outline-offset: 2px; }
+
+        /* --- Skip link (accessibilité clavier) --- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 0;
+            background: #0056b3;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            z-index: 100;
+            font-weight: 600;
+        }
+        .skip-link:focus { top: 0; }
+
+        /* --- Header --- */
+        header {
+            background: #003366; /* Contrast ratio > 9:1 avec #ffffff */
+            color: #ffffff;
+            padding: 1.5rem 2rem;
+        }
+        header h1 { font-size: 1.5rem; font-weight: 700; }
+        header p { color: #d0d0d0; font-size: 0.9rem; margin-top: 0.25rem; }
+
+        /* --- Main --- */
+        main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+
+        /* --- KPI Summary cards --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .kpi-card {
+            background: #ffffff;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+        .kpi-card .kpi-label {
+            font-size: 0.85rem;
+            color: #333333; /* Contrast > 10:1 sur #ffffff */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        .kpi-card .kpi-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #003366; /* Contrast > 9:1 sur #ffffff */
+            margin-top: 0.25rem;
+            word-break: break-word;
+        }
+
+        /* --- Tables --- */
+        section { margin-bottom: 2rem; }
+        section h2 {
+            font-size: 1.2rem;
+            color: #1a1a1a;
+            margin-bottom: 0.75rem;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 0.25rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td { padding: 0.6rem 0.75rem; text-align: left; }
+        th {
+            background: #003366;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        td {
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+        }
+        tr:hover td { background: #f0f4f8; }
+
+        /* --- Status --- */
+        .status {
+            text-align: center;
+            padding: 2rem;
+            color: #555555; /* Contrast > 4.6:1 sur #f5f5f5 */
+            font-style: italic;
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: #555555;
+            font-size: 0.8rem;
+            border-top: 1px solid #d0d0d0;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Skip link pour navigation clavier (WCAG 2.4.1) -->
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+<header role="banner">
+    <h1>GlobalTrade Solutions</h1>
+    <p>Dashboard Lakehouse — Indicateurs clés de performance</p>
+</header>
+
+<main id="main-content" role="main">
+
+    <!-- KPI Summary -->
+    <section aria-label="Indicateurs globaux">
+        <h2>Vue d'ensemble</h2>
+        <div class="kpi-grid" id="kpi-summary" role="region" aria-live="polite">
+            <p class="status">Chargement des indicateurs...</p>
+        </div>
+    </section>
+
+    <!-- Revenue by Country -->
+    <section aria-label="Chiffre d'affaires par pays">
+        <h2>Chiffre d'affaires par pays</h2>
+        <div id="kpi-country" role="region" aria-live="polite">
+            <p class="status">Chargement...</p>
+        </div>
+    </section>
+
+    <!-- Sales by Category -->
+    <section aria-label="Ventes par catégorie">
+        <h2>Ventes par catégorie de produit</h2>
+        <div id="kpi-category" role="region" aria-live="polite">
+            <p class="status">Chargement...</p>
+        </div>
+    </section>
+
+</main>
+
+<footer role="contentinfo">
+    <p>POC Lakehouse — Projet Strategic Lakehouse</p>
+</footer>
+
+<script>
+    const API_BASE = "";
+
+    function formatNumber(n) {
+        return new Intl.NumberFormat("fr-FR").format(Math.round(n));
+    }
+
+    function formatCurrency(n) {
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + " M$";
+        if (n >= 1_000) return (n / 1_000).toFixed(1) + " k$";
+        return n.toFixed(0) + " $";
+    }
+
+    async function fetchJSON(endpoint) {
+        const res = await fetch(API_BASE + endpoint);
+        return res.json();
+    }
+
+    async function loadSummary() {
+        const data = await fetchJSON("/api/kpi/summary");
+        const d = data[0];
+        document.getElementById("kpi-summary").innerHTML = `
+            <div class="kpi-card" role="group" aria-label="Total commandes">
+                <div class="kpi-label">Commandes</div>
+                <div class="kpi-value" aria-live="polite">${formatNumber(d.total_orders)}</div>
+            </div>
+            <div class="kpi-card" role="group" aria-label="Total clients">
+                <div class="kpi-label">Clients</div>
+                <div class="kpi-value" aria-live="polite">${formatNumber(d.total_customers)}</div>
+            </div>
+            <div class="kpi-card" role="group" aria-label="Chiffre d'affaires total">
+                <div class="kpi-label">Chiffre d'affaires</div>
+                <div class="kpi-value" aria-live="polite">${formatCurrency(d.total_revenue)}</div>
+            </div>
+            <div class="kpi-card" role="group" aria-label="Panier moyen">
+                <div class="kpi-label">Panier moyen</div>
+                <div class="kpi-value" aria-live="polite">${formatCurrency(d.avg_order_value)}</div>
+            </div>
+        `;
+    }
+
+    function buildTable(headers, rows) {
+        const ths = headers.map(h => `<th scope="col">${h}</th>`).join("");
+        const trs = rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("");
+        return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+    }
+
+    async function loadCountry() {
+        const data = await fetchJSON("/api/kpi/revenue-by-country");
+        const html = buildTable(
+            ["Pays", "Commandes", "CA Total", "Panier moyen"],
+            data.map(d => [d.country, formatNumber(d.nb_orders), formatCurrency(d.total_revenue), formatCurrency(d.avg_order_value)])
+        );
+        document.getElementById("kpi-country").innerHTML = html;
+    }
+
+    async function loadCategory() {
+        const data = await fetchJSON("/api/kpi/sales-by-category");
+        const html = buildTable(
+            ["Catégorie", "Sous-catégorie", "Quantité", "CA Total"],
+            data.map(d => [d.category, d.sub_category, formatNumber(d.total_quantity), formatCurrency(d.total_revenue)])
+        );
+        document.getElementById("kpi-category").innerHTML = html;
+    }
+
+    // Chargement initial + rafraîchissement toutes les 30s
+    async function loadAll() {
+        await Promise.all([loadSummary(), loadCountry(), loadCategory()]);
+    }
+
+    loadAll();
+    setInterval(loadAll, 30000);
+</script>
+
+</body>
+</html>
